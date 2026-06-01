@@ -293,6 +293,7 @@ enum SPBlendMode : std::uint_least8_t {
     SP_CSS_BLEND_SATURATION,
     SP_CSS_BLEND_COLOR,
     SP_CSS_BLEND_LUMINOSITY,
+    SP_CSS_BLEND_ADD,
     SP_CSS_BLEND_ENDMODE
 };
 
@@ -642,6 +643,7 @@ static SPStyleEnum const enum_blend_mode[] = {
     {"saturation",       SP_CSS_BLEND_SATURATION},
     {"color",            SP_CSS_BLEND_COLOR},
     {"luminosity",       SP_CSS_BLEND_LUMINOSITY},
+    {"add",              SP_CSS_BLEND_ADD},
     {nullptr, -1}
 };
 

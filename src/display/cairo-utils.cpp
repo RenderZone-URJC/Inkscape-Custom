@@ -1420,6 +1420,8 @@ SPBlendMode ink_cairo_operator_to_css_blend(cairo_operator_t cairo_operator)
             return SP_CSS_BLEND_COLOR;
         case CAIRO_OPERATOR_HSL_LUMINOSITY:
             return SP_CSS_BLEND_LUMINOSITY;
+        case CAIRO_OPERATOR_ADD:
+            return SP_CSS_BLEND_ADD;
         case CAIRO_OPERATOR_OVER:
             return SP_CSS_BLEND_NORMAL;
         default:
@@ -1464,6 +1466,8 @@ cairo_operator_t ink_css_blend_to_cairo_operator(SPBlendMode css_blend)
             return CAIRO_OPERATOR_HSL_COLOR;
         case SP_CSS_BLEND_LUMINOSITY:
             return CAIRO_OPERATOR_HSL_LUMINOSITY;
+        case SP_CSS_BLEND_ADD:
+            return CAIRO_OPERATOR_ADD;
         case SP_CSS_BLEND_NORMAL:
             return CAIRO_OPERATOR_OVER;
         default:

@@ -37,7 +37,8 @@ std::set<SPBlendMode> const FilterBlend::_valid_modes {
     SP_CSS_BLEND_HARDLIGHT,   SP_CSS_BLEND_SOFTLIGHT,
     SP_CSS_BLEND_DIFFERENCE,  SP_CSS_BLEND_EXCLUSION,
     SP_CSS_BLEND_HUE,         SP_CSS_BLEND_SATURATION,
-    SP_CSS_BLEND_COLOR,       SP_CSS_BLEND_LUMINOSITY
+    SP_CSS_BLEND_COLOR,       SP_CSS_BLEND_LUMINOSITY,
+    SP_CSS_BLEND_ADD
     // clang-format on
         };
 
@@ -84,6 +85,8 @@ static inline cairo_operator_t get_cairo_op(SPBlendMode _blend_mode)
     case SP_CSS_BLEND_LUMINOSITY:
         return CAIRO_OPERATOR_HSL_LUMINOSITY;
 
+    case SP_CSS_BLEND_ADD:
+        return CAIRO_OPERATOR_ADD;
     case SP_CSS_BLEND_NORMAL:
     default:
         return CAIRO_OPERATOR_OVER;

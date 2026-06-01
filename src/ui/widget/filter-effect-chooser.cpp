@@ -32,6 +32,7 @@ const EnumData<SPBlendMode> SPBlendModeData[SP_CSS_BLEND_COUNT] = {
     { SP_CSS_BLEND_LIGHTEN,    NC_("BlendMode", "Lighten"), "lighten" },
     { SP_CSS_BLEND_SCREEN,     NC_("BlendMode", "Screen"), "screen" },
     { SP_CSS_BLEND_COLORDODGE, NC_("BlendMode", "Color Dodge"), "color-dodge" },
+    { SP_CSS_BLEND_ADD,        NC_("BlendMode", "Add"), "add" },
     { SP_CSS_BLEND_ENDMODE, "-", "-" },
     { SP_CSS_BLEND_OVERLAY,    NC_("BlendMode", "Overlay"), "overlay" },
     { SP_CSS_BLEND_SOFTLIGHT,  NC_("BlendMode", "Soft Light"), "soft-light" },

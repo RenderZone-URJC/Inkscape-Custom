@@ -95,6 +95,10 @@ static SPBlendMode read_mode(char const *value)
             if (std::strcmp(value, "hue") == 0)
                 return SP_CSS_BLEND_HUE;
             break;
+        case 'a':
+            if (std::strcmp(value, "add") == 0)
+                return SP_CSS_BLEND_ADD;
+            break;
         case 'e':
             if (std::strcmp(value, "exclusion") == 0)
                 return SP_CSS_BLEND_EXCLUSION;
@@ -173,6 +177,8 @@ Inkscape::XML::Node *SPFeBlend::write(Inkscape::XML::Document *doc, Inkscape::XM
             mode = "color";       break;
         case SP_CSS_BLEND_LUMINOSITY:
             mode = "luminosity";  break;
+        case SP_CSS_BLEND_ADD:
+            mode = "add";         break;
         default:
             mode = nullptr;
     }
