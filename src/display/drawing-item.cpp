@@ -760,8 +760,23 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
                 _cache->surface->markDirty();
             }
             _cache->surface->prepare();
-            dc.setOperator(ink_css_blend_to_cairo_operator(_blend_mode));
-            _cache->surface->paintFromCache(dc, carea, forcecache);
+            if (_blend_mode == SP_CSS_BLEND_ADD) {
+                // Linear-light add: capture clean cache into temp, then software-blend onto dc
+                Geom::IntRect const orig_area = *carea;
+                DrawingSurface cache_tmp(orig_area, device_scale);
+                DrawingContext cache_tct(cache_tmp);
+                cache_tct.setOperator(CAIRO_OPERATOR_SOURCE);
+                cache_tct.setSource(0.0, 0.0, 0.0, 0.0);
+                cache_tct.paint();
+                cache_tct.setOperator(CAIRO_OPERATOR_OVER);
+                _cache->surface->paintFromCache(cache_tct, carea, forcecache);
+                int const cdx = (int)((orig_area.min().x() - dc.surface()->origin().x()) * device_scale);
+                int const cdy = (int)((orig_area.min().y() - dc.surface()->origin().y()) * device_scale);
+                ink_cairo_surface_blend_linear_add(dc.rawTarget(), cdx, cdy, cache_tmp.raw());
+            } else {
+                dc.setOperator(ink_css_blend_to_cairo_operator(_blend_mode));
+                _cache->surface->paintFromCache(dc, carea, forcecache);
+            }
             if (!carea) {
                 dc.setSource(0, 0, 0, 0);
                 return RENDER_OK;
@@ -922,12 +937,18 @@ unsigned DrawingItem::render(DrawingContext &dc, RenderContext &rc, Geom::IntRec
         _cache->surface->markClean(*carea);
     }
 
-    dc.rectangle(*carea);
-    dc.setSource(&intermediate);
-
     // 7. Render blend mode
-    dc.setOperator(ink_css_blend_to_cairo_operator(_blend_mode));
-    dc.fill();
+    if (_blend_mode == SP_CSS_BLEND_ADD) {
+        // Linear-light add: avoid sRGB byte-addition error of CAIRO_OPERATOR_ADD
+        int const blend_dx = (int)((carea->min().x() - dc.surface()->origin().x()) * device_scale);
+        int const blend_dy = (int)((carea->min().y() - dc.surface()->origin().y()) * device_scale);
+        ink_cairo_surface_blend_linear_add(dc.rawTarget(), blend_dx, blend_dy, intermediate.raw());
+    } else {
+        dc.rectangle(*carea);
+        dc.setSource(&intermediate);
+        dc.setOperator(ink_css_blend_to_cairo_operator(_blend_mode));
+        dc.fill();
+    }
     dc.setSource(0,0,0,0);
     // Web isolation only works if parent doesn't have transform
 

@@ -133,6 +133,8 @@ Colors::Color ink_cairo_surface_average_color(cairo_surface_t *surface, cairo_su
 double srgb_to_linear( const double c );
 int ink_cairo_surface_srgb_to_linear(cairo_surface_t *surface);
 int ink_cairo_surface_linear_to_srgb(cairo_surface_t *surface);
+void ink_cairo_surface_blend_linear_add(cairo_surface_t *dst, int dst_x, int dst_y,
+                                        cairo_surface_t *src);
 
 Cairo::RefPtr<Cairo::Pattern> ink_cairo_pattern_create_slanting_stripes(uint32_t color);
 Cairo::RefPtr<Cairo::Pattern> create_checkerboard_pattern(uint32_t dark, uint32_t light, int size);

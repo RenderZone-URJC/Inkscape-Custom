@@ -1487,6 +1487,103 @@ int ink_cairo_surface_linear_to_srgb(cairo_surface_t *surface)
     return width * height;
 }
 
+void ink_cairo_surface_blend_linear_add(cairo_surface_t *dst, int dst_x, int dst_y,
+                                        cairo_surface_t *src)
+{
+    assert(cairo_surface_get_type(src) == CAIRO_SURFACE_TYPE_IMAGE);
+    assert(cairo_surface_get_type(dst) == CAIRO_SURFACE_TYPE_IMAGE);
+
+    cairo_surface_flush(src);
+    cairo_surface_flush(dst);
+
+    int const sw = cairo_image_surface_get_width(src);
+    int const sh = cairo_image_surface_get_height(src);
+    int const dw = cairo_image_surface_get_width(dst);
+    int const dh = cairo_image_surface_get_height(dst);
+    int const src_stride = cairo_image_surface_get_stride(src) / 4;
+    int const dst_stride = cairo_image_surface_get_stride(dst) / 4;
+
+    auto const *src_data = reinterpret_cast<guint32 const *>(cairo_image_surface_get_data(src));
+    auto       *dst_data = reinterpret_cast<guint32 *>      (cairo_image_surface_get_data(dst));
+
+    // sRGB → linear light (straight, input in [0,1])
+    auto s2l = [](float c) noexcept -> float {
+        return c <= 0.04045f ? c / 12.92f : std::pow((c + 0.055f) / 1.055f, 2.4f);
+    };
+    // linear → sRGB (straight, input clamped to [0,1])
+    auto l2s = [](float c) noexcept -> float {
+        c = std::min(1.f, std::max(0.f, c));
+        return c <= 0.0031308f ? c * 12.92f : 1.055f * std::pow(c, 1.f / 2.4f) - 0.055f;
+    };
+
+    for (int y = 0; y < sh; y++) {
+        int const py = dst_y + y;
+        if (py < 0 || py >= dh) continue;
+        for (int x = 0; x < sw; x++) {
+            int const px = dst_x + x;
+            if (px < 0 || px >= dw) continue;
+
+            guint32 const s = src_data[y * src_stride + x];
+            guint32 const d = dst_data[py * dst_stride + px];
+
+            // Unpack premultiplied ARGB32 to float [0,1]
+            float const as = ((s >> 24) & 0xff) * (1.f / 255.f);
+            float const rs = ((s >> 16) & 0xff) * (1.f / 255.f);
+            float const gs = ((s >>  8) & 0xff) * (1.f / 255.f);
+            float const bs = ((s >>  0) & 0xff) * (1.f / 255.f);
+
+            float const ad = ((d >> 24) & 0xff) * (1.f / 255.f);
+            float const rd = ((d >> 16) & 0xff) * (1.f / 255.f);
+            float const gd = ((d >>  8) & 0xff) * (1.f / 255.f);
+            float const bd = ((d >>  0) & 0xff) * (1.f / 255.f);
+
+            // Unpremultiply to straight color
+            float const inv_as = (as > 0.f) ? 1.f / as : 0.f;
+            float const inv_ad = (ad > 0.f) ? 1.f / ad : 0.f;
+            float const rs_s = rs * inv_as, gs_s = gs * inv_as, bs_s = bs * inv_as;
+            float const rd_s = rd * inv_ad, gd_s = gd * inv_ad, bd_s = bd * inv_ad;
+
+            // sRGB → linear
+            float const rs_l = s2l(rs_s), gs_l = s2l(gs_s), bs_l = s2l(bs_s);
+            float const rd_l = s2l(rd_s), gd_l = s2l(gd_s), bd_l = s2l(bd_s);
+
+            // Output alpha (Porter-Duff over)
+            float const ao = as + ad - as * ad;
+            if (ao < 1e-6f) {
+                dst_data[py * dst_stride + px] = 0;
+                continue;
+            }
+
+            // Blend function B(Cd, Cs) = min(Cd_lin + Cs_lin, 1.0) in linear light
+            float const Br = std::min(rd_l + rs_l, 1.f);
+            float const Bg = std::min(gd_l + gs_l, 1.f);
+            float const Bb = std::min(bd_l + bs_l, 1.f);
+
+            // CSS compositing formula with blend mode B:
+            // Co_lin = as*(1-ad)*Cs + ad*(1-as)*Cd + as*ad*B(Cd,Cs)
+            float co_r = as*(1.f-ad)*rs_l + ad*(1.f-as)*rd_l + as*ad*Br;
+            float co_g = as*(1.f-ad)*gs_l + ad*(1.f-as)*gd_l + as*ad*Bg;
+            float co_b = as*(1.f-ad)*bs_l + ad*(1.f-as)*bd_l + as*ad*Bb;
+
+            // Normalize to straight color, encode to sRGB, premultiply back
+            float const inv_ao = 1.f / ao;
+            co_r = l2s(co_r * inv_ao) * ao;
+            co_g = l2s(co_g * inv_ao) * ao;
+            co_b = l2s(co_b * inv_ao) * ao;
+
+            auto pack = [](float v) -> guint32 {
+                return std::min((guint32)(v * 255.f + 0.5f), (guint32)255);
+            };
+            dst_data[py * dst_stride + px] = (pack(ao)   << 24)
+                                           | (pack(co_r) << 16)
+                                           | (pack(co_g) <<  8)
+                                           |  pack(co_b);
+        }
+    }
+
+    cairo_surface_mark_dirty(dst);
+}
+
 Cairo::RefPtr<Cairo::Pattern> ink_cairo_pattern_create_slanting_stripes(uint32_t color)
 {
     constexpr int width = 10;
